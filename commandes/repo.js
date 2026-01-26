@@ -8,7 +8,7 @@ zokou({ nomCom: "repo", categorie: "General", reaction: "❄" }, async (dest, zk
   const { ms, repondre, auteurMessage } = commandeOptions;
   
   // GitHub API link
-  const repoApi = "https://api.github.com/repos/Next5x/TIMNASA_TMD1";
+  const repoApi = "https://github.com/adev58285-star/ARYAN-TECH1";
   const img = 'https://files.catbox.moe/e51g2r.jpg';
   const channelJid = "120363420172397674@newsletter";
 
