@@ -93,7 +93,7 @@ else {
 zokou({ nomCom: "support", categorie: "General" }, async (dest, zk, commandeOptions) => {
   const { ms, repondre, auteurMessage, } = commandeOptions; 
  
-  repondre("THANK YOU FOR CHOOSING ARYAN_TECH2, HERE ARE OUR SUPPORTIVE LINKS\n\n ☉ CHANNEL LINK IS HERE ☉ \n\n❒⁠⁠⁠⁠[https://whatsapp.com/channel/0029VbBk9IKAjPXIih13Q33d] \n\n ☉ GROUP LINK IS HERE ☉\n\n❒⁠⁠⁠⁠[https://chat.whatsapp.com/E8Qg4L6QNdgJNLux9VwRnC?mode=gi_t] \n\n ☉MADE IN TANZANIA☉\n\n❒ ARYAN-TECH2\n\n\n*Created By ᴛɪᴍɴᴀsᴀ ᴛᴍᴅ2* ") 
+  repondre("THANK YOU FOR CHOOSING ARYAN_TECH2, HERE ARE OUR SUPPORTIVE LINKS\n\n ☉ CHANNEL LINK IS HERE ☉ \n\n❒⁠⁠⁠⁠[https://whatsapp.com/channel/0029VbBk9IKAjPXIih13Q33d] \n\n ☉ GROUP LINK IS HERE ☉\n\n❒⁠⁠⁠⁠[https://chat.whatsapp.com/E8Qg4L6QNdgJNLux9VwRnC?mode=gi_t] \n\n ☉MADE IN TANZANIA☉\n\n❒ ARYAN-TECH2\n\n\n*Created By Ayran* ") 
   await zk.sendMessage(auteurMessage,{text : `THANK YOU FOR CHOOSING TIMNASA,MAKE SURE YOU FOLLOW THESE LINKS. `},{quoted :ms})
 
 })
