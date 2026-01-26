@@ -185,7 +185,48 @@ if (conf.AUTOREACT_STATUS=== "yes") {
             var auteurMessage = verifGroupe ? (ms.key.participant ? ms.key.participant : ms.participant) : origineMessage;
             if (ms.key.fromMe) {
                 auteurMessage = idBot;
-            }
+            }console.log("------ contenu du message ------");
+console.log(texte);
+
+// ================== ANTI-LINK LOGIC ==================
+if (verifGroupe && texte && !ms.key.fromMe) {
+    const etatAntiLien = await verifierEtatJid(origineMessage);
+
+    if (etatAntiLien === "on") {
+        const metadata = await zk.groupMetadata(origineMessage);
+        const admins = metadata.participants
+            .filter(p => p.admin !== null)
+            .map(p => p.id);
+
+        const botJid = zk.user.id.split(':')[0] + "@s.whatsapp.net";
+        const isBotAdmin = admins.includes(botJid);
+        const isSenderAdmin = admins.includes(auteurMessage);
+
+        if (!isBotAdmin) return;
+
+        const linkRegex = /(https?:\/\/|www\.|chat\.whatsapp\.com|t\.me|facebook\.com|youtu\.be)/gi;
+
+        if (linkRegex.test(texte)) {
+            if (isSenderAdmin) return;
+
+            await zk.sendMessage(origineMessage, {
+                delete: {
+                    remoteJid: origineMessage,
+                    fromMe: false,
+                    id: ms.key.id,
+                    participant: auteurMessage
+                }
+            });
+
+            await zk.sendMessage(origineMessage, {
+                text: `🚫 *ANTI-LINK*\n@${auteurMessage.split("@")[0]} links haziruhusiwi hapa.`,
+                mentions: [auteurMessage]
+            });
+        }
+    }
+}
+
+// ================== CHATBOT (AUTO-REPLY & AUDIO) ==================
             
             var membreGroupe = verifGroupe ? ms.key.participant : '';
             const { getAllSudoNumbers } = require("./bdd/sudo");
