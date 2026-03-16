@@ -22,7 +22,7 @@
 
 ## 🔑 ɢᴇɴᴇʀᴀᴛᴇ sᴇssɪᴏɴ ɪᴅ
 <p align="center">
-  <a href="https://aryan-happ-new-year-2026.onrender">
+  <a href="https://session-id-site-fycn.onrender.com>
     <img src="https://img.shields.io/badge/GENERATE-SESSION_ID-FF00FF?style=for-the-badge&logo=appveyor&logoColor=white" width="380" height="70"/>
   </a>
 </p>
@@ -84,7 +84,7 @@
 
 ---
 
-### 🤝 ᴄᴏʟʟᴀʙᴏʀᴀᴛᴏʀs (ÄŖŸÄŅ-ȚËĊȞ ᴛᴇᴀᴍ)
+### 🤝 ᴄᴏʟʟᴀʙᴏʀᴀᴛᴏʀs (∆ŖŸ∆Ņ-ȚËĊȞ ᴛᴇᴀᴍ)
 <p align="center">
   <i>The legends behind this project:</i>
 </p>
