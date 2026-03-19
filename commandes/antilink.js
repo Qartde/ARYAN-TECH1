@@ -3,6 +3,16 @@ const { verifierEtatJid, recupererActionJid, mettreAJourAction, ajouterOuMettreA
 const { getWarnCountByJID, ajouterUtilisateurAvecWarnCount, resetWarnCountByJID } = require("../bdd/warn");
 const conf = require("../set");
 
+// Helper function to decode JID (remove device suffix)
+const decodeJid = (jid) => {
+    if (!jid) return jid;
+    if (/:\d+@/gi.test(jid)) {
+        let decoded = jid.split(':')[0] + '@s.whatsapp.net';
+        return decoded;
+    }
+    return jid;
+};
+
 zokou({
   nomCom: "antilink",
   aliases: ["antilien", "antiurl", "antilinks"],
@@ -20,8 +30,31 @@ zokou({
     // Get group metadata
     const groupMetadata = await zk.groupMetadata(dest);
     const participants = groupMetadata.participants;
-    const isAdmin = participants.some(p => p.id === auteurMessage && (p.admin === 'admin' || p.admin === 'superadmin'));
-    const isBotAdmin = participants.some(p => p.id === idBot && (p.admin === 'admin' || p.admin === 'superadmin'));
+    
+    // Decode all IDs for comparison
+    const senderClean = decodeJid(auteurMessage);
+    const botClean = decodeJid(idBot);
+    
+    // Check if user is admin - use decoded ID
+    const isAdmin = participants.some(p => {
+        const participantId = decodeJid(p.id);
+        return participantId === senderClean && (p.admin === 'admin' || p.admin === 'superadmin');
+    });
+    
+    // Check if bot is admin - use decoded ID
+    const isBotAdmin = participants.some(p => {
+        const participantId = decodeJid(p.id);
+        return participantId === botClean && (p.admin === 'admin' || p.admin === 'superadmin');
+    });
+    
+    // Debug logs
+    console.log("🔍 Anti-link Debug:");
+    console.log("Sender (original):", auteurMessage);
+    console.log("Sender (clean):", senderClean);
+    console.log("Bot ID (original):", idBot);
+    console.log("Bot ID (clean):", botClean);
+    console.log("Is Admin:", isAdmin);
+    console.log("Is Bot Admin:", isBotAdmin);
     
     // Check if user is admin
     if (!isAdmin) {
@@ -38,7 +71,7 @@ zokou({
     // ============ TURN ON ANTI-LINK ============
     if (subCommand === "on") {
       await ajouterOuMettreAJourJid(dest, 'oui');
-      // Set default action to warn (3 strikes) - using 'supp' as default in your DB
+      // Set default action to warn (3 strikes)
       await mettreAJourAction(dest, 'warn');
       
       return zk.sendMessage(dest, {
@@ -105,18 +138,17 @@ zokou({
     else if (subCommand === "action") {
       const action = arg[1]?.toLowerCase();
       
-      let dbAction = 'warn'; // default for 3-strike rule
+      let dbAction = 'warn';
       let actionDisplay = '3-strike rule';
       
-      // Map actions to your database values
       if (action === 'delete') {
-        dbAction = 'supp'; // 'supp' in your DB means delete
+        dbAction = 'supp';
         actionDisplay = 'delete only (no warnings)';
       } else if (action === 'warn') {
-        dbAction = 'warn'; // We'll use 'warn' for 3-strike rule
+        dbAction = 'warn';
         actionDisplay = '3-strike rule (warn + remove)';
       } else if (action === 'remove' || action === 'kick') {
-        dbAction = 'remove'; // immediate remove
+        dbAction = 'remove';
         actionDisplay = 'remove immediately';
       } else {
         return repondre("❌ Please specify action: `delete`, `warn`, or `remove`\nExample: `.antilink action warn`");
@@ -148,7 +180,6 @@ zokou({
     else if (subCommand === "reset") {
       let targetJid = null;
       
-      // Check if replying to someone
       if (msgRepondu && auteurMsgRepondu) {
         targetJid = auteurMsgRepondu;
       } else if (arg[1] && arg[1].includes('@')) {
@@ -174,7 +205,7 @@ zokou({
       } else if (arg[1] && arg[1].includes('@')) {
         targetJid = arg[1].replace('@', '') + '@s.whatsapp.net';
       } else {
-        targetJid = auteurMessage; // Check self
+        targetJid = auteurMessage;
       }
       
       const warnCount = await getWarnCountByJID(targetJid) || 0;
@@ -198,7 +229,6 @@ zokou({
       const etat = await verifierEtatJid(dest);
       const dbAction = await recupererActionJid(dest) || 'supp';
       
-      // Translate database action to display
       let actionDisplay = 'delete only';
       if (dbAction === 'warn') actionDisplay = '3-strike rule';
       else if (dbAction === 'remove') actionDisplay = 'remove immediately';
