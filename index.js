@@ -558,7 +558,7 @@ setTimeout(() => {
                 }
             }
 
-            // ============= ANTI-LINK HANDLER (ADMIN PROTECTED) =============
+            // ============= ANTI-LINK HANDLER (FULLY FIXED) =============
             try {
                 const isAntiLinkEnabled = await verifierEtatJid(origineMessage);
                 
@@ -615,10 +615,14 @@ setTimeout(() => {
                     if (action === 'remove') {
                         console.log("REMOVE MODE: Removing user immediately");
                         
-                        await zk.sendMessage(origineMessage, {
+                        // Send warning message first
+                        const warnMsg = await zk.sendMessage(origineMessage, {
                             'text': `🚨 *LINK DETECTED!* 🚨\n\n@${auteurMessage.split('@')[0]} has been removed for sending links.\n\n🚫 Links are not allowed in this group!`,
                             'mentions': [auteurMessage]
                         }, { 'quoted': ms });
+                        
+                        // Wait a bit then remove user
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                         
                         try {
                             await zk.groupParticipantsUpdate(origineMessage, [auteurMessage], "remove");
@@ -634,7 +638,7 @@ setTimeout(() => {
                         let warnCount = await getWarnCountByJID(auteurMessage) || 0;
                         console.log(`Current warns: ${warnCount}, Max: ${maxWarns}`);
                         
-                        if (warnCount >= maxWarns) {
+                        if (warnCount >= maxWarns - 1) {
                             // User has reached max warnings - REMOVE
                             console.log("WARN MODE: Max warnings reached, removing user");
                             
@@ -642,6 +646,8 @@ setTimeout(() => {
                                 'text': `⚠️ *FINAL WARNING!* ⚠️\n\n@${auteurMessage.split('@')[0]} has been removed after ${maxWarns} warnings.\n\n🚫 Links are not allowed in this group!`,
                                 'mentions': [auteurMessage]
                             }, { 'quoted': ms });
+                            
+                            await new Promise(resolve => setTimeout(resolve, 1000));
                             
                             try {
                                 await zk.groupParticipantsUpdate(origineMessage, [auteurMessage], "remove");
@@ -656,7 +662,8 @@ setTimeout(() => {
                             const newWarnCount = warnCount + 1;
                             const remaining = maxWarns - newWarnCount;
                             
-                            let warningText = `⚠️ *WARNING!* ⚠️\n\n@${auteurMessage.split('@')[0]}, links are not allowed in this group!\n\n`;
+                            let warningText = `⚠️ *WARNING!* ⚠️\n\n`;
+                            warningText += `@${auteurMessage.split('@')[0]}, links are not allowed in this group!\n\n`;
                             warningText += `⚠️ *Warning ${newWarnCount}/${maxWarns}*\n`;
                             if (remaining > 0) {
                                 warningText += `📌 You will be removed after ${remaining} more link(s).`;
@@ -801,7 +808,7 @@ setTimeout(() => {
         zk.ev.on("connection.update", async (con) => {
             const { lastDisconnect, connection } = con;
             if (connection === "connecting") {
-                console.log("ℹ️ Timnasa is connecting...");
+                console.log("ℹ️ aryan is connecting...");
             } else if (connection === 'open') {
                 console.log("🔮 aryan Connected to your WhatsApp! 🫧");
                 console.log("--");

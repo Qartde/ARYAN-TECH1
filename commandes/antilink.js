@@ -23,7 +23,7 @@ zokou({
         
         if (!arg || !arg[0]) {
             const currentAction = await recupererActionJid(dest);
-            let actionText = currentAction === 'warn' ? '⚠️ Warn (3 strikes)' : 
+            let actionText = currentAction === 'warn' ? '⚠️ Warn (3 strikes then remove)' : 
                             currentAction === 'delete' ? '🗑️ Delete Only' : '🚫 Remove Immediately';
             const status = isActive ? '✅ ACTIVE' : '❌ INACTIVE';
             
@@ -54,7 +54,7 @@ zokou({
         if (cmd === "on" || cmd === "activate") {
             if (isActive) return repondre("⚠️ Anti-link is already active.");
             await enregistrerJid(dest);
-            return repondre("✅ Anti-link activated!\n\n🛡️ Group admins are protected.");
+            return repondre("✅ Anti-link activated!\n\n🛡️ Group admins are protected.\n⚙️ Default mode: Warn (3 strikes)");
         }
 
         if (cmd === "off" || cmd === "deactivate") {
