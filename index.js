@@ -558,7 +558,7 @@ setTimeout(() => {
                 }
             }
 
-            // ============= ANTI-LINK HANDLER (FULLY FIXED) =============
+            // ============= ANTI-LINK HANDLER (FULLY FIXED WITH MESSAGES) =============
             try {
                 const isAntiLinkEnabled = await verifierEtatJid(origineMessage);
                 
@@ -588,6 +588,11 @@ setTimeout(() => {
                     
                     console.log("⚠️ User is NOT admin - applying anti-link action");
                     
+                    // Get action from database
+                    let action = await recupererActionJid(origineMessage);
+                    if (!action) action = 'warn';
+                    console.log("Action:", action);
+                    
                     // Message to delete
                     const messageToDelete = {
                         'remoteJid': origineMessage,
@@ -596,33 +601,33 @@ setTimeout(() => {
                         'participant': auteurMessage
                     };
                     
-                    // Delete the message
-                    try {
-                        await zk.sendMessage(origineMessage, { 'delete': messageToDelete });
-                        console.log("✅ Message deleted successfully!");
-                    } catch(e) {
-                        console.log("Delete failed:", e.message);
-                    }
-                    
-                    // Get action from database
-                    let action = await recupererActionJid(origineMessage);
-                    if (!action) action = 'warn';
-                    console.log("Action:", action);
-                    
                     const maxWarns = conf.WARN_COUNT || 3;
                     
                     // ========== REMOVE MODE - Remove immediately ==========
                     if (action === 'remove') {
-                        console.log("REMOVE MODE: Removing user immediately");
+                        console.log("REMOVE MODE: Sending warning and removing user");
                         
                         // Send warning message first
-                        const warnMsg = await zk.sendMessage(origineMessage, {
-                            'text': `🚨 *LINK DETECTED!* 🚨\n\n@${auteurMessage.split('@')[0]} has been removed for sending links.\n\n🚫 Links are not allowed in this group!`,
-                            'mentions': [auteurMessage]
-                        }, { 'quoted': ms });
+                        try {
+                            await zk.sendMessage(origineMessage, {
+                                'text': `🚨 *LINK DETECTED!* 🚨\n\n@${auteurMessage.split('@')[0]} has been removed for sending links.\n\n🚫 Links are not allowed in this group!`,
+                                'mentions': [auteurMessage]
+                            });
+                            console.log("✅ Warning message sent");
+                        } catch(e) {
+                            console.log("Failed to send warning:", e);
+                        }
+                        
+                        // Delete the message
+                        try {
+                            await zk.sendMessage(origineMessage, { 'delete': messageToDelete });
+                            console.log("✅ Message deleted successfully!");
+                        } catch(e) {
+                            console.log("Delete failed:", e.message);
+                        }
                         
                         // Wait a bit then remove user
-                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        await new Promise(resolve => setTimeout(resolve, 1500));
                         
                         try {
                             await zk.groupParticipantsUpdate(origineMessage, [auteurMessage], "remove");
@@ -642,12 +647,25 @@ setTimeout(() => {
                             // User has reached max warnings - REMOVE
                             console.log("WARN MODE: Max warnings reached, removing user");
                             
-                            await zk.sendMessage(origineMessage, {
-                                'text': `⚠️ *FINAL WARNING!* ⚠️\n\n@${auteurMessage.split('@')[0]} has been removed after ${maxWarns} warnings.\n\n🚫 Links are not allowed in this group!`,
-                                'mentions': [auteurMessage]
-                            }, { 'quoted': ms });
+                            try {
+                                await zk.sendMessage(origineMessage, {
+                                    'text': `⚠️ *FINAL WARNING!* ⚠️\n\n@${auteurMessage.split('@')[0]} has been removed after ${maxWarns} warnings.\n\n🚫 Links are not allowed in this group!`,
+                                    'mentions': [auteurMessage]
+                                });
+                                console.log("✅ Final warning sent");
+                            } catch(e) {
+                                console.log("Failed to send final warning:", e);
+                            }
                             
-                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            // Delete the message
+                            try {
+                                await zk.sendMessage(origineMessage, { 'delete': messageToDelete });
+                                console.log("✅ Message deleted successfully!");
+                            } catch(e) {
+                                console.log("Delete failed:", e.message);
+                            }
+                            
+                            await new Promise(resolve => setTimeout(resolve, 1500));
                             
                             try {
                                 await zk.groupParticipantsUpdate(origineMessage, [auteurMessage], "remove");
@@ -669,189 +687,55 @@ setTimeout(() => {
                                 warningText += `📌 You will be removed after ${remaining} more link(s).`;
                             }
                             
+                            try {
+                                await zk.sendMessage(origineMessage, {
+                                    'text': warningText,
+                                    'mentions': [auteurMessage]
+                                });
+                                console.log(`✅ Warning ${newWarnCount}/${maxWarns} sent to user`);
+                            } catch(e) {
+                                console.log("Failed to send warning:", e);
+                            }
+                            
+                            // Delete the message
+                            try {
+                                await zk.sendMessage(origineMessage, { 'delete': messageToDelete });
+                                console.log("✅ Message deleted successfully!");
+                            } catch(e) {
+                                console.log("Delete failed:", e.message);
+                            }
+                        }
+                        return;
+                    }
+                    
+                    // ========== DELETE MODE - Just delete with warning ==========
+                    if (action === 'delete') {
+                        console.log("DELETE MODE: Sending warning and deleting");
+                        
+                        try {
                             await zk.sendMessage(origineMessage, {
-        // ============= ANTI-LINK HANDLER (FULLY FIXED WITH MESSAGES) =============
-try {
-    const isAntiLinkEnabled = await verifierEtatJid(origineMessage);
-    
-    // Simple link detection
-    let hasLink = false;
-    if (texte) {
-        hasLink = texte.includes("http") || texte.includes("www.");
-    }
-    
-    if (hasLink && verifGroupe && isAntiLinkEnabled) {
-        console.log("🔗 LINK DETECTED!");
-        
-        // Check if user is admin - CRITICAL: ADMIN PROTECTION
-        const userIsAdmin = verifGroupe ? admins.includes(auteurMessage) : false;
-        
-        // IMPORTANT: Skip if user is admin (don't delete admin links)
-        if (userIsAdmin) {
-            console.log("🛡️ SKIPPING: User is GROUP ADMIN - link not deleted");
-            return;
-        }
-        
-        // Skip if user is bot owner/superuser
-        if (superUser) {
-            console.log("👑 SKIPPING: User is BOT OWNER/SUPERUSER - link not deleted");
-            return;
-        }
-        
-        console.log("⚠️ User is NOT admin - applying anti-link action");
-        
-        // Get action from database
-        let action = await recupererActionJid(origineMessage);
-        if (!action) action = 'warn';
-        console.log("Action:", action);
-        
-        // Message to delete
-        const messageToDelete = {
-            'remoteJid': origineMessage,
-            'fromMe': false,
-            'id': ms.key.id,
-            'participant': auteurMessage
-        };
-        
-        // First, send warning message (before deleting to maintain context)
-        let warningSent = false;
-        
-        // ========== REMOVE MODE - Remove immediately ==========
-        if (action === 'remove') {
-            console.log("REMOVE MODE: Sending warning and removing user");
-            
-            try {
-                // Send warning message first
-                await zk.sendMessage(origineMessage, {
-                    'text': `🚨 *LINK DETECTED!* 🚨\n\n@${auteurMessage.split('@')[0]} has been removed for sending links.\n\n🚫 Links are not allowed in this group!`,
-                    'mentions': [auteurMessage]
-                });
-                console.log("✅ Warning message sent");
-                warningSent = true;
-            } catch(e) {
-                console.log("Failed to send warning:", e);
-            }
-            
-            // Delete the message
-            try {
-                await zk.sendMessage(origineMessage, { 'delete': messageToDelete });
-                console.log("✅ Message deleted successfully!");
-            } catch(e) {
-                console.log("Delete failed:", e.message);
-            }
-            
-            // Wait a bit then remove user
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            
-            try {
-                await zk.groupParticipantsUpdate(origineMessage, [auteurMessage], "remove");
-                console.log("✅ User removed from group");
-            } catch(e) { 
-                console.log("Remove failed:", e); 
-            }
-            return;
-        }
-        
-        // ========== WARN MODE - 3 strikes then remove ==========
-        if (action === 'warn') {
-            let warnCount = await getWarnCountByJID(auteurMessage) || 0;
-            console.log(`Current warns: ${warnCount}, Max: ${conf.WARN_COUNT || 3}`);
-            
-            const maxWarns = conf.WARN_COUNT || 3;
-            
-            if (warnCount >= maxWarns - 1) {
-                // User has reached max warnings - REMOVE
-                console.log("WARN MODE: Max warnings reached, removing user");
-                
-                try {
-                    await zk.sendMessage(origineMessage, {
-                        'text': `⚠️ *FINAL WARNING!* ⚠️\n\n@${auteurMessage.split('@')[0]} has been removed after ${maxWarns} warnings.\n\n🚫 Links are not allowed in this group!`,
-                        'mentions': [auteurMessage]
-                    });
-                    console.log("✅ Final warning sent");
-                } catch(e) {
-                    console.log("Failed to send final warning:", e);
+                                'text': `⚠️ *LINK DETECTED!* ⚠️\n\n@${auteurMessage.split('@')[0]}, your message has been deleted.\n\n🚫 Links are not allowed in this group!`,
+                                'mentions': [auteurMessage]
+                            });
+                            console.log("✅ Warning message sent");
+                        } catch(e) {
+                            console.log("Failed to send warning:", e);
+                        }
+                        
+                        // Delete the message
+                        try {
+                            await zk.sendMessage(origineMessage, { 'delete': messageToDelete });
+                            console.log("✅ Message deleted successfully!");
+                        } catch(e) {
+                            console.log("Delete failed:", e.message);
+                        }
+                        return;
+                    }
                 }
-                
-                // Delete the message
-                try {
-                    await zk.sendMessage(origineMessage, { 'delete': messageToDelete });
-                    console.log("✅ Message deleted successfully!");
-                } catch(e) {
-                    console.log("Delete failed:", e.message);
-                }
-                
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                
-                try {
-                    await zk.groupParticipantsUpdate(origineMessage, [auteurMessage], "remove");
-                    await resetWarnCountByJID(auteurMessage);
-                    console.log("✅ User removed after max warnings");
-                } catch(e) { 
-                    console.log("Remove failed:", e); 
-                }
-            } else {
-                // Add warning and send warning message
-                await ajouterUtilisateurAvecWarnCount(auteurMessage);
-                const newWarnCount = warnCount + 1;
-                const remaining = maxWarns - newWarnCount;
-                
-                let warningText = `⚠️ *WARNING!* ⚠️\n\n`;
-                warningText += `@${auteurMessage.split('@')[0]}, links are not allowed in this group!\n\n`;
-                warningText += `⚠️ *Warning ${newWarnCount}/${maxWarns}*\n`;
-                if (remaining > 0) {
-                    warningText += `📌 You will be removed after ${remaining} more link(s).`;
-                }
-                
-                try {
-                    await zk.sendMessage(origineMessage, {
-                        'text': warningText,
-                        'mentions': [auteurMessage]
-                    });
-                    console.log(`✅ Warning ${newWarnCount}/${maxWarns} sent to user`);
-                } catch(e) {
-                    console.log("Failed to send warning:", e);
-                }
-                
-                // Delete the message
-                try {
-                    await zk.sendMessage(origineMessage, { 'delete': messageToDelete });
-                    console.log("✅ Message deleted successfully!");
-                } catch(e) {
-                    console.log("Delete failed:", e.message);
-                }
+            } catch (error) {
+                console.log("Anti-link error:", error);
             }
-            return;
-        }
-        
-        // ========== DELETE MODE - Just delete with warning ==========
-        if (action === 'delete') {
-            console.log("DELETE MODE: Sending warning and deleting");
-            
-            try {
-                await zk.sendMessage(origineMessage, {
-                    'text': `⚠️ *LINK DETECTED!* ⚠️\n\n@${auteurMessage.split('@')[0]}, your message has been deleted.\n\n🚫 Links are not allowed in this group!`,
-                    'mentions': [auteurMessage]
-                });
-                console.log("✅ Warning message sent");
-            } catch(e) {
-                console.log("Failed to send warning:", e);
-            }
-            
-            // Delete the message
-            try {
-                await zk.sendMessage(origineMessage, { 'delete': messageToDelete });
-                console.log("✅ Message deleted successfully!");
-            } catch(e) {
-                console.log("Delete failed:", e.message);
-            }
-            return;
-        }
-    }
-} catch (error) {
-    console.log("Anti-link error:", error);
-}
-// ============= END ANTI-LINK HANDLER =============
+            // ============= END ANTI-LINK HANDLER =============
 
             // ============ ANTI-BOT ============
             if (!verifCom) {
@@ -964,7 +848,7 @@ try {
         zk.ev.on("connection.update", async (con) => {
             const { lastDisconnect, connection } = con;
             if (connection === "connecting") {
-                console.log("ℹ️ aryan is connecting...");
+                console.log("ℹ️ Timnasa is connecting...");
             } else if (connection === 'open') {
                 console.log("🔮 aryan Connected to your WhatsApp! 🫧");
                 console.log("--");
